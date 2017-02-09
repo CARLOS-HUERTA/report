@@ -1,0 +1,214 @@
+------------------------------------------------------------------------------------
+--_InvocaReporte
+------------------------------------------------------------------------------------
+
+Procedure IM$_InvocaReporte(pCodigoReporte varchar2, pNombreReporte varchar2,
+                	          pCadenaParametros varchar2, pCodigoUsuario varchar2) Is
+	Comando varchar2(1000);
+	vRutaReportes varchar2(100);
+	vBase varchar2(40); 
+	vCadenaParametros varchar(2000);
+	pl_id ParamList;
+	vLen number;
+	i number;
+	letra varchar2(1);
+	str varchar2(1000) := '';
+	vParametro varchar2(30);
+	vValor varchar2(60);
+	vWebParam varchar2(1000);
+	vParamForm Varchar2(10);
+	vServer varchar2(255);
+	--vReportServer Varchar2(255); ---- comentado por jd 31072014 ----
+	vEjecutableReportes Varchar2(255);
+	vDesformat Varchar2(100);
+Begin
+	Set_Application_Property(Cursor_Style,'Busy');
+	
+	vCadenaParametros := Replace(Replace(LTrim(RTrim(pCadenaParametros)),' =','='),'= ','=');
+	
+	If Get_Application_Property(USER_INTERFACE) = 'WEB' Then
+		vServer := ADM08010.NombreServidor;
+		--vReportServer := ADM08010.ServidorReportes; ---- comentado por jd 31072014 ----
+		vEjecutableReportes := ADM08010.EjecutableReportes;
+		
+		If InStr(Lower(Nvl(vCadenaParametros,'x')),'paramform') = 0 Then
+			If pCadenaParametros Is Null Then
+				vCadenaParametros := vCadenaParametros || ' paramform=yes';
+			Else
+				vCadenaParametros := vCadenaParametros || ' paramform=no';  --- era no
+			End If;
+		End If;		
+		
+		vWebParam := Replace(LTrim(vCadenaParametros), ' ', '&');
+		
+		--24.02.2015
+		--/*
+		If Lower(vWebParam) not like '%desformat%' Then
+	 		vDesformat := 'desformat=pdf';
+	 	End If;
+	 	--*/
+
+		--Web.Show_Document('http://'||vServer||vEjecutableReportes||'userid=sisgodba/sisgodba@db11g1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;'||vDesformat||'&amp;'||vWebParam, '_blank');
+		--- JD LO COMENTO 17072014		Web.Show_Document('http://'||vServer||vEjecutableReportes||'key1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;server='||vReportServer||vDesformat||'&amp;'||vWebParam, '_blank');
+		--12.02.2015 Web.Show_Document('http://'||vServer||vEjecutableReportes||'key1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;'||vDesformat||'&amp;'||vWebParam, '_blank');
+		--Web.Show_Document('http://'||vServer||vEjecutableReportes||'userid=sisgodba/sisgodba@db11g1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;'||vDesformat||'&amp;'||vWebParam, '_blank');
+		Web.Show_Document('http://'||vServer||vEjecutableReportes||'key1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;'||vDesformat||'&amp;'||vWebParam, '_blank');
+		--Web.Show_Document('javascript:window.open("http://'||vServer||'/reports/rwservlet?key1&report='||lower(rtrim(pNombreReporte))||'&amp;destype=cache&amp;server='||vReportServer||'&amp;'||vWebParam||'","","menubar=yes,resizable=yes,status=yes,scrollbars=yes");self.close();', '_blank');
+	Else -- Cliente / Servidor	 
+		vRutaReportes := '';	
+		Comando := rtrim(vRutaReportes)||rtrim(pNombreReporte); 
+
+		pl_id := Get_Parameter_List('Parametros');
+		If Not id_null(pl_id) Then
+			destroy_parameter_list(pl_id);
+		End If;
+		pl_id := Create_Parameter_List('Parametros'); 
+ 
+		vCadenaParametros := vCadenaParametros || ' ';
+		vLen := Length(vCadenaParametros);
+ 
+		For i In 1..vLen Loop
+			letra := substr(vCadenaParametros,i,1);
+		 	If letra = '=' Then
+		 		vParametro := str;
+		 		str := '';
+		 		letra := ''; 		
+		 	ElsIf letra = ' ' Then 	 		
+		 		vValor := str;
+		 		str := ''; 		
+		 		letra := ''; 		
+		 	End If;
+			If vParametro Is Not Null And vValor Is Not Null Then
+				Add_parameter(pl_id, vParametro, TEXT_PARAMETER, vValor);
+				If upper(ltrim(rtrim(vParametro))) Like '%PARAMFORM%' Then
+					vParamForm := ltrim(rtrim(vParametro));
+				End If;
+				vParametro := '';
+				vValor := ''; 	
+			End If;
+			str := str || letra;
+		End loop;
+
+		If vParamForm Is Null Then
+			If pCadenaParametros Is Null Then
+				Add_Parameter(Pl_id ,'PARAMFORM',TEXT_PARAMETER,'YES'); 
+			Else
+				Add_Parameter(Pl_id ,'PARAMFORM',TEXT_PARAMETER,'NO'); 
+			End if;
+		End if;
+
+		Add_Parameter(Pl_id ,'ORACLE_SHUTDOWN',TEXT_PARAMETER,'YES');
+
+		--28/05/2014
+     ---Run_Product(REPORTS, comando, SYNCHRONOUS, RUNTIME, FILESYSTEM, pl_id, null);
+	End If;
+
+	Set_Application_Property(cursor_style,'default');
+End;
+------------------------------------------------------------------------------------
+--IM_INVOCEREPORTEEXCEL
+------------------------------------------------------------------------------------
+
+PROCEDURE IM_INVOCEREPORTEEXCEL (pCodigoReporte varchar2, pNombreReporte varchar2,
+                	          pCadenaParametros varchar2, pCodigoUsuario varchar2) Is
+	Comando varchar2(1000);
+	vRutaReportes varchar2(100);
+	vBase varchar2(40); 
+	vCadenaParametros varchar(2000);
+	pl_id ParamList;
+	vLen number;
+	i number;
+	letra varchar2(1);
+	str varchar2(1000) := '';
+	vParametro varchar2(30);
+	vValor varchar2(60);
+	vWebParam varchar2(1000);
+	vParamForm Varchar2(10);
+	vServer varchar2(255);
+	--vReportServer Varchar2(255); ---- comentado por jd 31072014 ----
+	vEjecutableReportes Varchar2(255);
+	vDesformat Varchar2(100);
+Begin
+	Set_Application_Property(Cursor_Style,'Busy');
+	
+	vCadenaParametros := Replace(Replace(LTrim(RTrim(pCadenaParametros)),' =','='),'= ','=');
+	
+	If Get_Application_Property(USER_INTERFACE) = 'WEB' Then
+		vServer := ADM08010.NombreServidor;
+		--vReportServer := ADM08010.ServidorReportes; ---- comentado por jd 31072014 ----
+		vEjecutableReportes := ADM08010.EjecutableReportes;
+		
+		If InStr(Lower(Nvl(vCadenaParametros,'x')),'paramform') = 0 Then
+			If pCadenaParametros Is Null Then
+				vCadenaParametros := vCadenaParametros || ' paramform=yes';
+			Else
+				vCadenaParametros := vCadenaParametros || ' paramform=no';  --- era no
+			End If;
+		End If;		
+		
+		vWebParam := Replace(LTrim(vCadenaParametros), ' ', '&');
+		
+		--24.02.2015
+		--/*
+		--If Lower(vWebParam) not like '%desformat%' Then
+	 		vDesformat := 'desformat=ENHANCEDSPREADSHEET';
+	 	--End If;
+	 	--*/
+
+		--Web.Show_Document('http://'||vServer||vEjecutableReportes||'userid=sisgodba/sisgodba@db11g1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;'||vDesformat||'&amp;'||vWebParam, '_blank');
+		--- JD LO COMENTO 17072014		Web.Show_Document('http://'||vServer||vEjecutableReportes||'key1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;server='||vReportServer||vDesformat||'&amp;'||vWebParam, '_blank');
+		--12.02.2015 Web.Show_Document('http://'||vServer||vEjecutableReportes||'key1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;'||vDesformat||'&amp;'||vWebParam, '_blank');
+		--Web.Show_Document('http://'||vServer||vEjecutableReportes||'userid=sisgodba/sisgodba@db11g1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;'||vDesformat||'&amp;'||vWebParam, '_blank');
+		Web.Show_Document('http://'||vServer||vEjecutableReportes||'key1&report='||Replace(Upper(pNombreReporte),'.RDF','')||'&amp;destype=cache&amp;'||vDesformat||'&amp;'||vWebParam, '_blank');
+		--Web.Show_Document('javascript:window.open("http://'||vServer||'/reports/rwservlet?key1&report='||lower(rtrim(pNombreReporte))||'&amp;destype=cache&amp;server='||vReportServer||'&amp;'||vWebParam||'","","menubar=yes,resizable=yes,status=yes,scrollbars=yes");self.close();', '_blank');
+	Else -- Cliente / Servidor	 
+		vRutaReportes := '';	
+		Comando := rtrim(vRutaReportes)||rtrim(pNombreReporte); 
+
+		pl_id := Get_Parameter_List('Parametros');
+		If Not id_null(pl_id) Then
+			destroy_parameter_list(pl_id);
+		End If;
+		pl_id := Create_Parameter_List('Parametros'); 
+ 
+		vCadenaParametros := vCadenaParametros || ' ';
+		vLen := Length(vCadenaParametros);
+ 
+		For i In 1..vLen Loop
+			letra := substr(vCadenaParametros,i,1);
+		 	If letra = '=' Then
+		 		vParametro := str;
+		 		str := '';
+		 		letra := ''; 		
+		 	ElsIf letra = ' ' Then 	 		
+		 		vValor := str;
+		 		str := ''; 		
+		 		letra := ''; 		
+		 	End If;
+			If vParametro Is Not Null And vValor Is Not Null Then
+				Add_parameter(pl_id, vParametro, TEXT_PARAMETER, vValor);
+				If upper(ltrim(rtrim(vParametro))) Like '%PARAMFORM%' Then
+					vParamForm := ltrim(rtrim(vParametro));
+				End If;
+				vParametro := '';
+				vValor := ''; 	
+			End If;
+			str := str || letra;
+		End loop;
+
+		If vParamForm Is Null Then
+			If pCadenaParametros Is Null Then
+				Add_Parameter(Pl_id ,'PARAMFORM',TEXT_PARAMETER,'YES'); 
+			Else
+				Add_Parameter(Pl_id ,'PARAMFORM',TEXT_PARAMETER,'NO'); 
+			End if;
+		End if;
+
+		Add_Parameter(Pl_id ,'ORACLE_SHUTDOWN',TEXT_PARAMETER,'YES');
+
+		--28/05/2014
+     ---Run_Product(REPORTS, comando, SYNCHRONOUS, RUNTIME, FILESYSTEM, pl_id, null);
+	End If;
+
+	Set_Application_Property(cursor_style,'default');
+End;

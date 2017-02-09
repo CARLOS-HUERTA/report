@@ -1,0 +1,106 @@
+-----------------------------------------------
+--IM$_ALERTAMENSAJES
+-----------------------------------------------
+PROCEDURE IM$_ALERTAMENSAJES(pTipoOperacion number, pMensaje varchar2) IS
+ alert_id alert;
+ seleccion number;
+BEGIN
+    alert_id := Find_Alert ('MENSAJES');
+    set_alert_property(alert_id,alert_message_text,pMensaje);
+    set_alert_property(alert_id,title,'Mensajes para el Usuario');
+    seleccion := Show_ALert(alert_id);
+    IF
+         seleccion = ALERT_BUTTON1
+    THEN
+         null;
+    END IF;
+END;
+
+------------------------------------------------
+--Reporte a excel
+------------------------------------------------
+
+DECLARE
+
+	vCadenaParametros varchar2(200) := ' ';
+	vNombreReporte varchar2(12) := 'CAR02010';
+BEGIN
+	set_application_property(cursor_style,'busy');
+	vCadenaParametros := 'PARAMFORM=NO';
+	vCadenaParametros := vCadenaParametros || ' P_CODIGOGRUPO='||:CONDICIONCOMPRACARTERA.CODIGOGRUPO;
+	vCadenaParametros := vCadenaParametros || ' P_CODIGOSUBGRUPO='||:CONDICIONCOMPRACARTERA.CODIGOSUBGRUPO;
+	vCadenaParametros := vCadenaParametros || ' P_CODIGODEPENDENCIA='||:CONDICIONCOMPRACARTERA.CODIGODEPENDENCIA;
+	
+		IM_INVOCEREPORTEEXCEL(null,vNombreReporte,vCadenaParametros,USER); 
+	set_application_property(cursor_style,'default');
+END;
+
+--------------------------------------------------
+--Reporte a pdf
+--------------------------------------------------
+
+Procedure IM_PRINT1 Is								
+	vNombreReporte varchar2(12) := 'LOG_ERROR';							
+	vCadenaParametros varchar2(200);							
+Begin								
+	Set_application_property(cursor_style,'busy');							
+	vCadenaParametros := vCadenaParametros||' p_codigogrupo='||TO_CHAR(:block1.codigogrupo);							
+	vCadenaParametros := vCadenaParametros||' p_codigosubgrupo='||TO_CHAR(:block1.codigosubgrupo);							
+	vCadenaParametros := vCadenaParametros||' p_codigodependencia='||TO_CHAR(:block1.codigodependencia);							
+	vCadenaParametros := vCadenaParametros||' PARAMFORM=NO';							
+	IM$_INVOCAREPORTE(null,vNombreReporte,vCadenaParametros,:parameter.CodigoUsuario); 							
+	Set_application_property(cursor_style,'default');							
+END;								
+
+-----------------------------------------------
+--Lista de valor
+-----------------------------------------------
+
+Declare
+ Lov_var boolean;
+Begin
+ IF :BLOCK0.MODOENVIO != 2 THEN
+   Lov_var := Show_LOV('Lv_Dependencia', 10, 20);
+ else
+   Lov_var := Show_LOV('Lv_Dependencia1', 10, 20);
+   
+ end if;
+  IM_CreaNombre;
+End;"			
+----------------
+boton
+-----
+If Not Show_Lov('CONCEPTOS') Then
+	Bell;
+Else
+	Next_Item;
+End If;
+----------------
+txt_texto
+---------
+List_Values;
+
+-------------------------------------
+--Poblar combo box
+-------------------------------------
+Procedure IM_PoblarGrupoMovimiento Is
+ x number;
+
+Begin
+ x := Populate_group('GrupoMovimiento');
+ Populate_List('block1.CmbGrupoMovimiento','GrupoMovimiento');
+End;	
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
